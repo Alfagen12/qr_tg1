@@ -91,39 +91,141 @@ class QRScanner {
     
     async startScanning() {
         try {
+            this.updateStatus('Проверка доступа к камере...', 'scanning');
+            
+            // Сначала проверяем доступность медиа устройств
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                throw new Error('API getUserMedia не поддерживается в этом браузере');
+            }
+            
+            // Получаем список доступных устройств
+            try {
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                console.log('Доступные устройства:', devices);
+                const videoDevices = devices.filter(device => device.kind === 'videoinput');
+                console.log('Видео устройства:', videoDevices);
+                
+                if (videoDevices.length === 0) {
+                    throw new Error('Не найдено ни одной камеры');
+                }
+            } catch (enumError) {
+                console.warn('Не удалось получить список устройств:', enumError);
+            }
+            
             this.updateStatus('Запуск камеры...', 'scanning');
             
-            // Запрашиваем доступ к камере
-            const constraints = {
-                video: {
-                    facingMode: 'environment', // Задняя камера на мобильных устройствах
-                    width: { ideal: 1280, min: 640 },
-                    height: { ideal: 720, min: 480 }
+            // Пробуем разные настройки камеры
+            const constraints = [
+                // Попытка 1: Задняя камера с высоким разрешением
+                {
+                    video: {
+                        facingMode: 'environment',
+                        width: { ideal: 1280, min: 640 },
+                        height: { ideal: 720, min: 480 }
+                    }
+                },
+                // Попытка 2: Любая камера с высоким разрешением
+                {
+                    video: {
+                        width: { ideal: 1280, min: 640 },
+                        height: { ideal: 720, min: 480 }
+                    }
+                },
+                // Попытка 3: Базовые настройки
+                {
+                    video: {
+                        width: { ideal: 640 },
+                        height: { ideal: 480 }
+                    }
+                },
+                // Попытка 4: Минимальные настройки
+                {
+                    video: true
                 }
-            };
+            ];
             
-            console.log('Запрос доступа к камере с настройками:', constraints);
-            this.stream = await navigator.mediaDevices.getUserMedia(constraints);
+            let lastError = null;
+            for (let i = 0; i < constraints.length; i++) {
+                try {
+                    console.log(`Попытка ${i + 1} запуска камеры с настройками:`, constraints[i]);
+                    this.stream = await navigator.mediaDevices.getUserMedia(constraints[i]);
+                    console.log('Камера запущена успешно:', this.stream);
+                    break;
+                } catch (error) {
+                    console.warn(`Попытка ${i + 1} неудачна:`, error);
+                    lastError = error;
+                    if (i === constraints.length - 1) {
+                        throw lastError;
+                    }
+                }
+            }
             
-            console.log('Доступ к камере получен:', this.stream);
+            if (!this.stream) {
+                throw new Error('Не удалось запустить камеру ни с одними настройками');
+            }
+            
+            console.log('Поток камеры получен:', this.stream);
+            console.log('Треки потока:', this.stream.getTracks());
+            
             this.video.srcObject = this.stream;
             this.video.style.display = 'block';
             this.placeholder.style.display = 'none';
             
-            // Ждем загрузки видео
+            this.updateStatus('Загрузка видео...', 'scanning');
+            
+            // Ждем загрузки видео с таймаутом и дополнительными проверками
             await new Promise((resolve, reject) => {
-                this.video.onloadedmetadata = () => {
-                    console.log('Видео загружено, размеры:', this.video.videoWidth, 'x', this.video.videoHeight);
-                    resolve();
-                };
-                this.video.onerror = (error) => {
-                    console.error('Ошибка загрузки видео:', error);
-                    reject(error);
+                let resolved = false;
+                
+                const onSuccess = () => {
+                    if (!resolved) {
+                        resolved = true;
+                        console.log('Видео загружено успешно, размеры:', this.video.videoWidth, 'x', this.video.videoHeight);
+                        console.log('Состояние видео:', {
+                            readyState: this.video.readyState,
+                            currentTime: this.video.currentTime,
+                            paused: this.video.paused,
+                            muted: this.video.muted
+                        });
+                        resolve();
+                    }
                 };
                 
-                // Таймаут на случай зависания
-                setTimeout(() => reject(new Error('Таймаут загрузки видео')), 10000);
+                const onError = (error) => {
+                    if (!resolved) {
+                        resolved = true;
+                        console.error('Ошибка загрузки видео:', error);
+                        reject(error);
+                    }
+                };
+                
+                // Несколько событий для надежности
+                this.video.addEventListener('loadedmetadata', onSuccess, { once: true });
+                this.video.addEventListener('loadeddata', onSuccess, { once: true });
+                this.video.addEventListener('canplay', onSuccess, { once: true });
+                this.video.addEventListener('error', onError, { once: true });
+                
+                // Принудительный запуск воспроизведения
+                this.video.play().catch(playError => {
+                    console.warn('Ошибка автозапуска видео:', playError);
+                    // Не считаем это критической ошибкой
+                });
+                
+                // Таймаут
+                setTimeout(() => {
+                    if (!resolved) {
+                        resolved = true;
+                        console.warn('Таймаут загрузки видео, но продолжаем...');
+                        resolve(); // Продолжаем даже при таймауте
+                    }
+                }, 5000);
             });
+            
+            // Дополнительная проверка
+            if (this.video.videoWidth === 0 || this.video.videoHeight === 0) {
+                console.warn('Видео загружено, но размеры нулевые. Ждем еще...');
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            }
             
             this.isScanning = true;
             this.startBtn.style.display = 'none';
@@ -143,9 +245,14 @@ class QRScanner {
                 this.showError('Камера не найдена. Убедитесь, что устройство имеет камеру.');
             } else if (error.name === 'NotReadableError') {
                 this.showError('Камера уже используется другим приложением.');
+            } else if (error.name === 'OverconstrainedError') {
+                this.showError('Камера не поддерживает требуемые параметры.');
             } else {
                 this.showError(`Не удалось получить доступ к камере: ${error.message}`);
             }
+            
+            // Сброс состояния при ошибке
+            this.stopScanning();
         }
     }
     
@@ -369,7 +476,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Дополнительная проверка для Telegram WebApp
 if (window.Telegram && window.Telegram.WebApp) {
+    console.log('Telegram WebApp обнаружен');
     // Настройка для Telegram WebApp
     window.Telegram.WebApp.ready();
     window.Telegram.WebApp.expand();
+    
+    // Включаем полноэкранный режим
+    try {
+        window.Telegram.WebApp.enableClosingConfirmation();
+        console.log('Telegram WebApp настроен');
+    } catch (error) {
+        console.warn('Ошибка настройки Telegram WebApp:', error);
+    }
+} else {
+    console.log('Обычный браузер (не Telegram WebApp)');
 }
+
+// Дополнительные проверки для диагностики
+console.log('Среда выполнения:', {
+    isSecureContext: window.isSecureContext,
+    protocol: window.location.protocol,
+    userAgent: navigator.userAgent,
+    mediaDevices: !!navigator.mediaDevices,
+    getUserMedia: !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia),
+    barcodeDetector: 'BarcodeDetector' in window
+});
