@@ -2,9 +2,9 @@
 
 ## Готовое приложение
 
-Ваше веб-приложение для сканирования QR-кодов готово и развернуто на GitHub Pages!
+Ваше веб-приложение для сканирования QR-кодов готово и развернуто на Netlify!
 
-**URL приложения:** https://alfagen12.github.io/qr_tg1/
+**URL приложения:** https://tgqr1.netlify.app/
 
 ## Что уже сделано ✅
 
@@ -12,7 +12,7 @@
 - ✅ Поддержка BarcodeDetector API
 - ✅ Адаптивный дизайн для мобильных устройств
 - ✅ Интеграция с n8n через webhook
-- ✅ Автоматическое развертывание на GitHub Pages
+- ✅ Автоматическое развертывание на Netlify
 - ✅ Тестовая страница с примерами QR-кодов
 
 ## Следующие шаги
@@ -25,8 +25,8 @@
 
 ### 2. Тестирование
 
-1. Откройте https://alfagen12.github.io/qr_tg1/test.html для тестовых QR-кодов
-2. Откройте основное приложение: https://alfagen12.github.io/qr_tg1/
+1. Откройте https://tgqr1.netlify.app/test.html для тестовых QR-кодов
+2. Откройте основное приложение: https://tgqr1.netlify.app/
 3. Проверьте работу сканера
 
 ### 3. Интеграция с Telegram ботом
@@ -34,7 +34,7 @@
 В вашем n8n workflow используйте этот URL для отправки пользователям:
 
 ```
-https://alfagen12.github.io/qr_tg1/?userId=USER_ID&chatId=CHAT_ID&webhook=YOUR_WEBHOOK_URL
+https://tgqr1.netlify.app/?userId=USER_ID&chatId=CHAT_ID&webhook=YOUR_WEBHOOK_URL
 ```
 
 ## Пример использования в n8n
@@ -46,7 +46,7 @@ const chatId = $json.message.chat.id;
 const userId = $json.message.from.id;
 const webhookUrl = 'https://your-n8n-instance.com/webhook/qr-scanner';
 
-const appUrl = `https://alfagen12.github.io/qr_tg1/?userId=${userId}&chatId=${chatId}&webhook=${encodeURIComponent(webhookUrl)}`;
+const appUrl = `https://tgqr1.netlify.app/?userId=${userId}&chatId=${chatId}&webhook=${encodeURIComponent(webhookUrl)}`;
 
 return [{
   chatId: chatId,
@@ -59,7 +59,7 @@ return [{
 
 ### Безопасность
 - Приложение требует HTTPS для доступа к камере
-- GitHub Pages автоматически предоставляет HTTPS
+- Netlify автоматически предоставляет HTTPS
 
 ### Поддержка браузеров
 - ✅ Chrome 83+

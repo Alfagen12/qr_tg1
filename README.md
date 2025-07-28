@@ -27,14 +27,14 @@ git clone https://github.com/Alfagen12/qr_tg1.git
 cd qr_tg1
 ```
 
-### 2. Использование с GitHub Pages
+### 2. Использование с Netlify
 
-Приложение автоматически развернуто на GitHub Pages и доступно по адресу:
-**https://alfagen12.github.io/qr_tg1/**
+Приложение развернуто на Netlify и доступно по адресу:
+**https://tgqr1.netlify.app/**
 
 Для использования передайте webhook URL как параметр:
 ```
-https://alfagen12.github.io/qr_tg1/?webhook=https://your-n8n-instance.com/webhook/qr-scanner&userId=123&chatId=456
+https://tgqr1.netlify.app/?webhook=https://your-n8n-instance.com/webhook/qr-scanner&userId=123&chatId=456
 ```
 
 ### 3. Настройка webhook URL
@@ -45,16 +45,16 @@ https://alfagen12.github.io/qr_tg1/?webhook=https://your-n8n-instance.com/webhoo
 Передавайте webhook URL как параметр при вызове приложения:
 
 ```
-https://alfagen12.github.io/qr_tg1/?webhook=https://your-n8n-instance.com/webhook/qr-scanner
+https://tgqr1.netlify.app/?webhook=https://your-n8n-instance.com/webhook/qr-scanner
 ```
 
 ### 4. Развертывание на собственном сервере
 
 Приложение является статическим, поэтому может быть развернуто на любом веб-сервере:
 
+- **Netlify** (рекомендуется) - https://tgqr1.netlify.app/
 - GitHub Pages
-- Netlify
-- Vercel
+- Vercel  
 - Apache/Nginx
 - И любом другом статическом хостинге
 
