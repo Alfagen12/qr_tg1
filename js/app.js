@@ -4,6 +4,7 @@ class QRScanner {
         this.placeholder = document.getElementById('placeholder');
         this.startBtn = document.getElementById('startBtn');
         this.stopBtn = document.getElementById('stopBtn');
+        this.debugBtn = document.getElementById('debugBtn');
         this.status = document.getElementById('status');
         this.result = document.getElementById('result');
         
@@ -31,6 +32,10 @@ class QRScanner {
         this.checkBarcodeDetectorSupport();
         this.bindEvents();
         this.updateStatus('Готов к сканированию');
+        
+        // Добавляем информацию о браузере в консоль
+        console.log('User Agent:', navigator.userAgent);
+        console.log('BarcodeDetector поддерживается:', 'BarcodeDetector' in window);
     }
     
     checkBarcodeDetectorSupport() {
@@ -39,12 +44,24 @@ class QRScanner {
             this.startBtn.disabled = true;
             return false;
         }
-        return true;
+        
+        // Проверяем поддержку QR кодов
+        try {
+            const detector = new BarcodeDetector({ formats: ['qr_code'] });
+            console.log('BarcodeDetector поддерживается:', detector);
+            return true;
+        } catch (error) {
+            console.error('Ошибка создания BarcodeDetector:', error);
+            this.showError('Ошибка инициализации сканера QR-кодов.');
+            this.startBtn.disabled = true;
+            return false;
+        }
     }
     
     bindEvents() {
         this.startBtn.addEventListener('click', () => this.startScanning());
         this.stopBtn.addEventListener('click', () => this.stopScanning());
+        this.debugBtn.addEventListener('click', () => this.showDebugInfo());
         
         // Обработка закрытия страницы
         window.addEventListener('beforeunload', () => this.stopScanning());
@@ -57,6 +74,19 @@ class QRScanner {
                 this.resumeScanning();
             }
         });
+        
+        // Добавляем обработчик событий видео
+        this.video.addEventListener('loadeddata', () => {
+            console.log('Видео данные загружены');
+        });
+        
+        this.video.addEventListener('canplay', () => {
+            console.log('Видео готово к воспроизведению');
+        });
+        
+        this.video.addEventListener('error', (error) => {
+            console.error('Ошибка видео:', error);
+        });
     }
     
     async startScanning() {
@@ -64,21 +94,35 @@ class QRScanner {
             this.updateStatus('Запуск камеры...', 'scanning');
             
             // Запрашиваем доступ к камере
-            this.stream = await navigator.mediaDevices.getUserMedia({
+            const constraints = {
                 video: {
                     facingMode: 'environment', // Задняя камера на мобильных устройствах
-                    width: { ideal: 1280 },
-                    height: { ideal: 720 }
+                    width: { ideal: 1280, min: 640 },
+                    height: { ideal: 720, min: 480 }
                 }
-            });
+            };
             
+            console.log('Запрос доступа к камере с настройками:', constraints);
+            this.stream = await navigator.mediaDevices.getUserMedia(constraints);
+            
+            console.log('Доступ к камере получен:', this.stream);
             this.video.srcObject = this.stream;
             this.video.style.display = 'block';
             this.placeholder.style.display = 'none';
             
             // Ждем загрузки видео
-            await new Promise((resolve) => {
-                this.video.onloadedmetadata = resolve;
+            await new Promise((resolve, reject) => {
+                this.video.onloadedmetadata = () => {
+                    console.log('Видео загружено, размеры:', this.video.videoWidth, 'x', this.video.videoHeight);
+                    resolve();
+                };
+                this.video.onerror = (error) => {
+                    console.error('Ошибка загрузки видео:', error);
+                    reject(error);
+                };
+                
+                // Таймаут на случай зависания
+                setTimeout(() => reject(new Error('Таймаут загрузки видео')), 10000);
             });
             
             this.isScanning = true;
@@ -92,41 +136,87 @@ class QRScanner {
             
         } catch (error) {
             console.error('Ошибка при запуске камеры:', error);
-            this.showError(`Не удалось получить доступ к камере: ${error.message}`);
+            
+            if (error.name === 'NotAllowedError') {
+                this.showError('Доступ к камере запрещен. Разрешите использование камеры и обновите страницу.');
+            } else if (error.name === 'NotFoundError') {
+                this.showError('Камера не найдена. Убедитесь, что устройство имеет камеру.');
+            } else if (error.name === 'NotReadableError') {
+                this.showError('Камера уже используется другим приложением.');
+            } else {
+                this.showError(`Не удалось получить доступ к камере: ${error.message}`);
+            }
         }
     }
     
     startDetection() {
         if (!this.isScanning) return;
         
-        const barcodeDetector = new BarcodeDetector({
-            formats: ['qr_code']
-        });
+        console.log('Запуск детекции QR-кодов...');
         
-        const detect = async () => {
-            if (!this.isScanning || this.video.readyState !== this.video.HAVE_ENOUGH_DATA) {
-                return;
-            }
+        try {
+            const barcodeDetector = new BarcodeDetector({
+                formats: ['qr_code']
+            });
             
-            try {
-                const barcodes = await barcodeDetector.detect(this.video);
-                
-                if (barcodes.length > 0) {
-                    const qrData = barcodes[0].rawValue;
-                    await this.handleQRDetected(qrData);
-                    return; // Останавливаем сканирование после успешного распознавания
+            let scanCount = 0;
+            const maxScans = 1000; // Максимальное количество попыток сканирования
+            
+            const detect = async () => {
+                if (!this.isScanning || this.video.readyState !== this.video.HAVE_ENOUGH_DATA) {
+                    if (this.isScanning) {
+                        // Повторяем через короткий интервал, если видео еще не готово
+                        this.scanInterval = setTimeout(detect, 100);
+                    }
+                    return;
                 }
-            } catch (error) {
-                console.error('Ошибка детекции:', error);
-            }
+                
+                scanCount++;
+                
+                try {
+                    console.log(`Попытка сканирования #${scanCount}, готовность видео:`, this.video.readyState);
+                    
+                    const barcodes = await barcodeDetector.detect(this.video);
+                    console.log('Результат сканирования:', barcodes);
+                    
+                    if (barcodes.length > 0) {
+                        const qrData = barcodes[0].rawValue;
+                        console.log('QR-код обнаружен:', qrData);
+                        await this.handleQRDetected(qrData);
+                        return; // Останавливаем сканирование после успешного распознавания
+                    }
+                    
+                    // Обновляем статус каждые 50 попыток
+                    if (scanCount % 50 === 0) {
+                        this.updateStatus(`Сканирование... (попытка ${scanCount})`, 'scanning');
+                    }
+                    
+                } catch (error) {
+                    console.error('Ошибка детекции:', error);
+                    if (scanCount % 100 === 0) {
+                        this.updateStatus(`Ошибка сканирования, продолжаем... (${scanCount})`, 'error');
+                    }
+                }
+                
+                // Проверяем лимит попыток
+                if (scanCount >= maxScans) {
+                    console.warn('Достигнут лимит попыток сканирования');
+                    this.updateStatus('Слишком много попыток. Попробуйте перезапустить сканирование.', 'error');
+                    return;
+                }
+                
+                // Продолжаем сканирование
+                if (this.isScanning) {
+                    this.scanInterval = setTimeout(detect, 100);
+                }
+            };
             
-            // Продолжаем сканирование
-            if (this.isScanning) {
-                this.scanInterval = setTimeout(detect, 100);
-            }
-        };
-        
-        detect();
+            detect();
+            
+        } catch (error) {
+            console.error('Ошибка инициализации детектора:', error);
+            this.showError('Ошибка инициализации сканера QR-кодов');
+        }
     }
     
     async handleQRDetected(qrData) {
@@ -239,6 +329,36 @@ class QRScanner {
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
+    }
+    
+    showDebugInfo() {
+        const debugInfo = {
+            userAgent: navigator.userAgent,
+            barcodeDetectorSupported: 'BarcodeDetector' in window,
+            mediaDevicesSupported: !!navigator.mediaDevices,
+            getUserMediaSupported: !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia),
+            videoElement: {
+                readyState: this.video.readyState,
+                videoWidth: this.video.videoWidth,
+                videoHeight: this.video.videoHeight,
+                paused: this.video.paused
+            },
+            streamActive: this.stream ? this.stream.active : false,
+            isScanning: this.isScanning,
+            webhookUrl: this.webhookUrl,
+            userId: this.userId,
+            chatId: this.chatId
+        };
+        
+        console.log('Debug Info:', debugInfo);
+        
+        this.result.className = 'result';
+        this.result.innerHTML = `
+            <strong>Debug Information:</strong>
+            <div class="qr-data">${JSON.stringify(debugInfo, null, 2)}</div>
+            <small>Информация также выведена в консоль браузера</small>
+        `;
+        this.result.style.display = 'block';
     }
 }
 
