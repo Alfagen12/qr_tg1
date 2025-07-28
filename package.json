@@ -1,0 +1,34 @@
+{
+  "name": "qr-telegram-scanner",
+  "version": "1.0.0",
+  "description": "QR Code Scanner Web App для Telegram бота с интеграцией n8n",
+  "main": "index.html",
+  "scripts": {
+    "start": "npx http-server -p 8000 -c-1",
+    "dev": "npx http-server -p 8000 -c-1 -o",
+    "build": "echo 'Static app - no build required'",
+    "test": "echo 'No tests specified'"
+  },
+  "keywords": [
+    "qr-code",
+    "scanner",
+    "telegram",
+    "n8n",
+    "barcode-detector",
+    "webapp"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "dependencies": {},
+  "devDependencies": {
+    "http-server": "^14.1.1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Alfagen12/qr_tg1.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Alfagen12/qr_tg1/issues"
+  },
+  "homepage": "https://github.com/Alfagen12/qr_tg1#readme"
+}
