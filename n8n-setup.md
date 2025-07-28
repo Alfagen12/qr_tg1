@@ -108,8 +108,8 @@ return [{
 const chatId = $json.message.chat.id;
 const userId = $json.message.from.id;
 
-// URL вашего веб-приложения
-const webAppUrl = `https://your-domain.com/index.html?userId=${userId}&chatId=${chatId}&webhook=${encodeURIComponent('https://your-n8n-instance.com/webhook/qr-scanner')}`;
+// URL веб-приложения на GitHub Pages
+const webAppUrl = `https://alfagen12.github.io/qr_tg1/?userId=${userId}&chatId=${chatId}&webhook=${encodeURIComponent('https://your-n8n-instance.com/webhook/qr-scanner')}`;
 
 const message = `📷 Для сканирования QR-кода откройте веб-приложение:\n\n${webAppUrl}\n\n💡 Инструкция:\n1. Откройте ссылку\n2. Разрешите доступ к камере\n3. Наведите на QR-код\n4. Результат будет отправлен автоматически`;
 
@@ -154,7 +154,7 @@ return [{
       "parameters": {
         "operation": "sendMessage",
         "chatId": "={{$json.message.chat.id}}",
-        "text": "📷 Для сканирования QR-кода откройте веб-приложение:\n\nhttps://your-domain.com/index.html?userId={{$json.message.from.id}}&chatId={{$json.message.chat.id}}&webhook={{encodeURIComponent('https://your-n8n-instance.com/webhook/qr-scanner')}}"
+        "text": "📷 Для сканирования QR-кода откройте веб-приложение:\n\nhttps://alfagen12.github.io/qr_tg1/?userId={{$json.message.from.id}}&chatId={{$json.message.chat.id}}&webhook={{encodeURIComponent('https://your-n8n-instance.com/webhook/qr-scanner')}}"
       }
     },
     {

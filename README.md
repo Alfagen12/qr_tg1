@@ -27,17 +27,28 @@ git clone https://github.com/Alfagen12/qr_tg1.git
 cd qr_tg1
 ```
 
-### 2. Настройка webhook URL
+### 2. Использование с GitHub Pages
 
-Откройте файл `js/app.js` и замените URL в методе `getDefaultWebhookUrl()` на ваш реальный webhook n8n:
+Приложение автоматически развернуто на GitHub Pages и доступно по адресу:
+**https://alfagen12.github.io/qr_tg1/**
 
-```javascript
-getDefaultWebhookUrl() {
-    return 'https://your-n8n-instance.com/webhook/qr-scanner';
-}
+Для использования передайте webhook URL как параметр:
+```
+https://alfagen12.github.io/qr_tg1/?webhook=https://your-n8n-instance.com/webhook/qr-scanner&userId=123&chatId=456
 ```
 
-### 3. Развертывание
+### 3. Настройка webhook URL
+
+### 3. Настройка webhook URL
+
+В файле `js/app.js` метод `getDefaultWebhookUrl()` настроен для получения URL из параметров URL.
+Передавайте webhook URL как параметр при вызове приложения:
+
+```
+https://alfagen12.github.io/qr_tg1/?webhook=https://your-n8n-instance.com/webhook/qr-scanner
+```
+
+### 4. Развертывание на собственном сервере
 
 Приложение является статическим, поэтому может быть развернуто на любом веб-сервере:
 

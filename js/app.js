@@ -22,7 +22,9 @@ class QRScanner {
     
     getDefaultWebhookUrl() {
         // Замените на ваш URL webhook n8n
-        return 'https://your-n8n-instance.com/webhook/qr-scanner';
+        // Пример: return 'https://your-n8n-instance.com/webhook/qr-scanner';
+        // Для тестирования можно использовать webhook.site или временно оставить пустым
+        return this.urlParams.get('webhook') || '';
     }
     
     init() {
